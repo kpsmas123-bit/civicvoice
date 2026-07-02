@@ -1,0 +1,2173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Desk</title>
+<!-- Public config: Supabase URL + PUBLISHABLE key only. Safe to commit because RLS
+     is enabled (migration 0004). The SECRET key never appears here. -->
+<script src="config.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #EDEFF5;
+    --bg-tint: #F4F2FB;
+    --card: #FFFFFF;
+    --ink: #1B1B26;
+    --muted: #777A8C;
+    --accent: #5B5BD6;
+    --accent-wash: #ECECFB;
+    --live: #E0641E;
+    --live-wash: #FCEBDE;
+    --hair: #E4E6EF;
+    --radius: 20px;
+    --shadow: 0 10px 30px -14px rgba(40,42,80,.22);
+    --shadow-lift: 0 18px 40px -16px rgba(40,42,80,.30);
+    --spring: cubic-bezier(.34,1.4,.5,1);
+    --font-sans: "Plus Jakarta Sans", -apple-system, Segoe UI, Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    color: var(--ink);
+    background:
+      radial-gradient(120% 80% at 50% -10%, var(--bg-tint) 0%, var(--bg) 55%) fixed;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    transition: background .35s ease, color .35s ease;
+  }
+
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 24px 18px 80px; }
+
+  /* header */
+  .top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+  .brandblock { display: flex; flex-direction: column; gap: 2px; }
+  .wordmark {
+    font-family: "IBM Plex Mono", monospace; font-weight: 500;
+    font-size: 22px; letter-spacing: .22em; color: var(--ink);
+  }
+  .tagline {
+    font-family: "IBM Plex Mono", monospace; font-size: 11px;
+    color: var(--muted); letter-spacing: .02em;
+  }
+
+  /* breadcrumb strip */
+  .crumbbar {
+    background: var(--accent-wash); border: 1px solid var(--hair);
+    border-radius: 12px; padding: 7px 12px; margin-bottom: 16px;
+  }
+  .crumb {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12.5px; color: var(--muted);
+    display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+  }
+  .crumb .seg {
+    background: var(--card); border: 1px solid var(--hair);
+    padding: 3px 10px; border-radius: 999px;
+  }
+  .crumb button.seg {
+    cursor: pointer; color: var(--accent); font: inherit;
+    transition: transform .2s var(--spring), background .2s ease;
+  }
+  .crumb button.seg:hover { transform: translateY(-1px); background: var(--accent-wash); }
+  .crumb .sep { opacity: .5; }
+
+  /* right-aligned header actions (gear + sign out) */
+  .top-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .icon-btn {
+    font-family: var(--font-sans); font-weight: 700; font-size: 13px;
+    border: 1px solid var(--hair); background: var(--card); color: var(--muted);
+    padding: 7px 13px; border-radius: 999px; cursor: pointer; box-shadow: var(--shadow);
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: transform .2s var(--spring), background .2s ease, color .2s ease;
+  }
+  .icon-btn:hover { transform: translateY(-1px); background: var(--accent-wash); color: var(--accent); }
+  .icon-btn:active { transform: translateY(0) scale(.97); }
+
+  /* pill nav rows */
+  nav.pages, .subnav {
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+  }
+  nav.pages { margin-bottom: 14px; }
+  .subnav { margin-bottom: 22px; }
+  .subnav:empty { display: none; }
+
+  .pill {
+    font-family: var(--font-sans);
+    font-weight: 700; font-size: 14px;
+    border: 1px solid var(--hair); background: var(--card); color: var(--ink);
+    padding: 9px 16px; border-radius: 999px; cursor: pointer;
+    transition: transform .25s var(--spring), background .2s ease, color .2s ease, box-shadow .25s var(--spring);
+    box-shadow: var(--shadow);
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .pill:hover { transform: translateY(-2px) scale(1.02); }
+  .pill:active { transform: translateY(0) scale(.98); }
+  .pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* smaller pills for the second row (subpages / threads) */
+  .subnav .pill { font-size: 13px; padding: 7px 13px; }
+  .pill .pending-dot {
+    font-family: "IBM Plex Mono", monospace; font-size: 9.5px; font-weight: 500;
+    background: var(--live-wash); color: var(--live);
+    padding: 1px 7px; border-radius: 999px;
+  }
+  .pill.active .pending-dot { background: rgba(255,255,255,.25); color: #fff; }
+
+  .pill.add {
+    background: transparent; box-shadow: none; color: var(--accent);
+    border-style: dashed; border-color: var(--accent);
+  }
+  .pill.add:hover { background: var(--accent-wash); }
+
+  /* top page nav: two-line pills (title + muted sub-label) */
+  .pill.page { flex-direction: column; align-items: flex-start; gap: 1px; line-height: 1.2; }
+  .pill.page .pill-title { font-weight: 800; font-size: 14px; }
+  .pill.page .pill-sub {
+    font-family: "IBM Plex Mono", monospace; font-weight: 500; font-size: 10px; color: var(--muted);
+  }
+  .pill.page.active .pill-sub { color: rgba(255,255,255,.82); }
+
+  /* small muted count on subpage/thread chips */
+  .pill .chip-count {
+    font-family: "IBM Plex Mono", monospace; font-weight: 500; font-size: 10px; color: var(--muted);
+  }
+  .pill.active .chip-count { color: rgba(255,255,255,.82); }
+
+  /* page header block (eyebrow / headline / intro) */
+  .page-header { margin: 4px 0 18px; }
+  .page-header:empty { display: none; }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: .09em;
+    color: var(--accent); text-transform: uppercase; margin-bottom: 8px;
+  }
+  .page-h1 {
+    font-family: var(--font-sans); font-weight: 800; font-size: 38px; line-height: 1.05;
+    letter-spacing: -.02em; color: var(--ink); margin: 0;
+  }
+  @media (max-width: 600px) { .page-h1 { font-size: 30px; } }
+  .page-intro { font-size: 15px; line-height: 1.5; color: var(--muted); margin: 10px 0 0; max-width: 64ch; }
+
+  /* section label + controls above the feed */
+  .feed-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; }
+  .section-label {
+    font-family: "IBM Plex Mono", monospace; font-size: 11.5px; letter-spacing: .08em;
+    color: var(--muted); text-transform: uppercase;
+  }
+  .feed-controls { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .feed-controls .count { margin-left: 0; }
+  .hairline { height: 1px; background: var(--hair); margin-bottom: 18px; }
+
+  /* create form */
+  .newform {
+    background: var(--card); border: 1px solid var(--hair); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 16px 18px; margin-bottom: 22px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .newform .ftitle { font-weight: 800; font-size: 15px; }
+  .newform input {
+    font-family: var(--font-sans); font-size: 14px; color: var(--ink);
+    border: 1px solid var(--hair); border-radius: 12px; padding: 10px 13px; width: 100%;
+    background: var(--bg-tint);
+  }
+  .newform input:focus { outline: none; border-color: var(--accent); }
+  .newform .hint { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--muted); line-height: 1.5; }
+  .newform .row { display: flex; gap: 8px; }
+  .btn {
+    font-family: var(--font-sans); font-weight: 700; font-size: 13.5px;
+    border-radius: 999px; padding: 9px 18px; cursor: pointer; border: 1px solid var(--hair);
+    transition: transform .2s var(--spring), background .2s ease;
+  }
+  .btn:active { transform: scale(.96); }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn.ghost { background: var(--card); color: var(--muted); }
+  .btn.ghost:hover { background: var(--bg-tint); }
+
+  /* controls */
+  .controls {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  .controls .ctl-label {
+    font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--muted);
+  }
+  select {
+    font-family: var(--font-sans); font-weight: 700; font-size: 13.5px;
+    color: var(--ink); background: var(--card);
+    border: 1px solid var(--hair); border-radius: 999px;
+    padding: 8px 14px; cursor: pointer; box-shadow: var(--shadow);
+  }
+  .count {
+    margin-left: auto;
+    font-family: "IBM Plex Mono", monospace; font-size: 12.5px; color: var(--muted);
+  }
+
+  /* feed grid */
+  #feed { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  @media (min-width: 860px) { #feed { grid-template-columns: 1fr 1fr; } }
+
+  /* tile */
+  .tile {
+    background: var(--card); border: 1px solid var(--hair);
+    border-radius: var(--radius); padding: 18px 18px 14px;
+    box-shadow: var(--shadow);
+    transition: transform .3s var(--spring), box-shadow .3s var(--spring);
+    display: flex; flex-direction: column; gap: 9px;
+  }
+  .tile:hover { transform: translateY(-3px) scale(1.006); box-shadow: var(--shadow-lift); }
+
+  .tile .meta {
+    font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--muted);
+    display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  }
+  .tile .meta .src { color: var(--ink); font-weight: 500; }
+  .tile .meta .dot { opacity: .45; }
+
+  .topic {
+    font-family: var(--font-sans); font-weight: 700; font-size: 10.5px;
+    background: var(--accent-wash); color: var(--accent);
+    padding: 2px 9px; border-radius: 999px; letter-spacing: .01em;
+  }
+  .lean {
+    font-family: var(--font-sans); font-weight: 700; font-size: 10.5px;
+    background: var(--live-wash); color: var(--live);
+    padding: 2px 9px; border-radius: 999px; text-transform: capitalize;
+  }
+
+  .tile h2 { margin: 0; font-size: 18px; font-weight: 800; line-height: 1.28; letter-spacing: -.01em; }
+  .tile h2 a { color: var(--ink); text-decoration: none; }
+  .tile h2 a:hover { color: var(--accent); }
+
+  .summary { font-size: 14.5px; line-height: 1.5; color: var(--ink); margin: 0; }
+  .headline-only { font-size: 13.5px; font-style: italic; color: var(--muted); margin: 0; }
+
+  .bullets { margin: 2px 0 0; padding-left: 18px; }
+  .bullets li { font-size: 13.5px; line-height: 1.5; color: var(--ink); opacity: .82; margin-bottom: 3px; }
+
+  .verify-note {
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--muted);
+    background: var(--bg-tint); border: 1px solid var(--hair);
+    border-radius: 10px; padding: 5px 10px; align-self: flex-start;
+  }
+
+  /* further reading: dashed divider + link buttons */
+  .further { margin-top: 2px; }
+  .further-head {
+    font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .07em;
+    color: var(--muted); text-transform: uppercase;
+    border-top: 1px dashed var(--hair); padding-top: 10px;
+  }
+  .further-links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .further-link {
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--accent);
+    text-decoration: none; border: 1px solid var(--hair); background: var(--bg-tint);
+    padding: 5px 11px; border-radius: 999px;
+    transition: transform .2s var(--spring), background .2s ease, border-color .2s ease;
+  }
+  .further-link:hover { transform: translateY(-1px); background: var(--accent-wash); border-color: var(--accent-wash); }
+
+  .actions { display: flex; gap: 8px; margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--hair); }
+  .act {
+    font-family: var(--font-sans); font-weight: 700; font-size: 12.5px;
+    border: 1px solid var(--hair); background: var(--card); color: var(--muted);
+    padding: 7px 13px; border-radius: 999px; cursor: pointer;
+    transition: transform .2s var(--spring), background .2s ease, color .2s ease;
+  }
+  .act:hover { transform: translateY(-1px); background: var(--accent-wash); color: var(--accent); border-color: var(--accent-wash); }
+  .act:active { transform: translateY(0) scale(.96); }
+
+  /* states */
+  .state {
+    grid-column: 1 / -1;
+    background: var(--card); border: 1px solid var(--hair); border-radius: var(--radius);
+    padding: 34px; text-align: center; color: var(--muted); box-shadow: var(--shadow);
+    font-size: 15px; line-height: 1.55;
+  }
+  .state .big { font-size: 17px; font-weight: 800; color: var(--ink); display: block; margin-bottom: 6px; }
+  .error {
+    background: var(--live-wash); border: 1px solid #f2c3a3; color: #8a3a10;
+    border-radius: var(--radius); padding: 18px 20px; white-space: pre-wrap;
+    font-size: 14px; line-height: 1.5; box-shadow: var(--shadow);
+  }
+  .skeleton {
+    background: var(--card); border: 1px solid var(--hair); border-radius: var(--radius);
+    padding: 18px; box-shadow: var(--shadow); height: 150px;
+    opacity: .6;
+  }
+
+  /* toast */
+  #toast {
+    position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(20px);
+    background: var(--ink); color: var(--card); font-weight: 700; font-size: 13.5px;
+    padding: 11px 18px; border-radius: 999px; box-shadow: var(--shadow-lift);
+    opacity: 0; pointer-events: none;
+    transition: opacity .25s ease, transform .35s var(--spring); z-index: 50;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ===== login screen ===== */
+  .login {
+    min-height: 100vh; display: none; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .login-card {
+    background: var(--card); border: 1px solid var(--hair); border-radius: var(--radius);
+    box-shadow: var(--shadow-lift); padding: 34px 30px; width: 100%; max-width: 380px;
+    display: flex; flex-direction: column; gap: 14px; text-align: left;
+  }
+  .login-brand { font-size: 30px; font-weight: 800; letter-spacing: -.01em; }
+  .login-sub { color: var(--muted); font-size: 14.5px; line-height: 1.5; margin-bottom: 4px; }
+  .login-card input {
+    font-family: var(--font-sans); font-size: 15px; color: var(--ink);
+    border: 1px solid var(--hair); border-radius: 12px; padding: 12px 14px; width: 100%;
+    background: var(--bg-tint);
+  }
+  .login-card input:focus { outline: none; border-color: var(--accent); }
+  .login-card .btn.primary { width: 100%; padding: 12px; font-size: 14.5px; }
+  .login-hint { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--muted); line-height: 1.5; }
+  .login-check { color: var(--ink); font-size: 14.5px; line-height: 1.55; }
+  .login-check-big { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+  .login-error {
+    font-family: var(--font-sans); font-size: 13px; line-height: 1.45; color: #8a3a10;
+    background: var(--live-wash); border: 1px solid #f2c3a3; border-radius: 12px; padding: 9px 12px;
+  }
+  .login-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .login-link {
+    font-family: var(--font-sans); font-weight: 700; font-size: 13px; color: var(--accent);
+    background: none; border: none; padding: 0; cursor: pointer;
+  }
+  .login-link:hover { text-decoration: underline; }
+  .login-link.muted { color: var(--muted); font-weight: 500; }
+
+  /* ===== appearance sheet ===== */
+  .sheet-backdrop {
+    position: fixed; inset: 0; background: rgba(20,21,28,.42);
+    display: none; align-items: center; justify-content: center; padding: 20px; z-index: 60;
+  }
+  .sheet-backdrop.show { display: flex; }
+  .sheet-card {
+    background: var(--card); border: 1px solid var(--hair); border-radius: var(--radius);
+    box-shadow: var(--shadow-lift); padding: 22px; width: 100%; max-width: 380px;
+    display: flex; flex-direction: column; gap: 18px;
+  }
+  .sheet-head { display: flex; align-items: center; }
+  .sheet-title { font-size: 17px; font-weight: 800; }
+  .sheet-x {
+    margin-left: auto; border: 1px solid var(--hair); background: var(--card); color: var(--muted);
+    width: 30px; height: 30px; border-radius: 999px; cursor: pointer; font-size: 14px;
+  }
+  .sheet-x:hover { background: var(--bg-tint); }
+  .sheet-section { display: flex; flex-direction: column; gap: 9px; }
+  .sheet-section.row-between { flex-direction: row; align-items: center; }
+  .sheet-section.row-between .sheet-label { margin-right: auto; }
+  .sheet-label { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--muted); }
+  .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+  .swatch {
+    font-family: var(--font-sans); font-weight: 700; font-size: 12px; color: var(--ink);
+    border: 1px solid var(--hair); background: var(--card); border-radius: 999px;
+    padding: 6px 12px 6px 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 7px;
+    transition: transform .2s var(--spring), border-color .2s ease;
+  }
+  .swatch span { width: 16px; height: 16px; border-radius: 999px; display: inline-block; }
+  .swatch:hover { transform: translateY(-1px); }
+  .swatch.sel { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-wash); }
+  .seg { display: inline-flex; border: 1px solid var(--hair); border-radius: 999px; overflow: hidden; background: var(--card); }
+  .seg button {
+    font-family: var(--font-sans); font-weight: 700; font-size: 12.5px; color: var(--muted);
+    border: none; background: transparent; padding: 8px 14px; cursor: pointer;
+  }
+  .seg button.sel { background: var(--accent); color: #fff; }
+  .toggle {
+    width: 46px; height: 26px; border-radius: 999px; border: 1px solid var(--hair);
+    background: var(--bg-tint); cursor: pointer; position: relative; padding: 0;
+    transition: background .2s ease;
+  }
+  .toggle.on { background: var(--accent); border-color: var(--accent); }
+  .toggle .knob {
+    position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 999px;
+    background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .2s var(--spring);
+  }
+  .toggle.on .knob { transform: translateX(20px); }
+
+  /* ===== compact density ===== */
+  body.compact .wrap { padding: 16px 14px 60px; }
+  body.compact #feed { gap: 10px; }
+  body.compact .tile { padding: 13px 14px 11px; gap: 7px; }
+  body.compact .pill { padding: 7px 13px; font-size: 13px; }
+  body.compact nav.pages { margin-bottom: 10px; }
+  body.compact .subnav { margin-bottom: 14px; }
+  body.compact .tile h2 { font-size: 16px; }
+  body.compact .summary { font-size: 13.5px; }
+
+  /* ===== sync bar (live countdown) ===== */
+  .syncbar { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+  .next-refresh {
+    font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--muted);
+    background: var(--card); border: 1px solid var(--hair); border-radius: 999px;
+    padding: 6px 13px; box-shadow: var(--shadow); display: inline-flex; align-items: center; gap: 7px;
+  }
+  .next-refresh::before {
+    content: ""; width: 7px; height: 7px; border-radius: 999px;
+    background: var(--accent); display: inline-block;
+  }
+
+  /* ===== pending queue ("Building at next refresh") ===== */
+  .pending-queue { margin-bottom: 18px; }
+  .pq-card {
+    background: var(--accent-wash); border: 1px solid var(--hair); border-radius: var(--radius);
+    padding: 14px 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 9px;
+  }
+  .pq-head { font-weight: 800; font-size: 14px; color: var(--ink); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .pq-when { font-family: "IBM Plex Mono", monospace; font-weight: 500; font-size: 11.5px; color: var(--muted); }
+  .pq-item { display: flex; align-items: center; gap: 10px; }
+  .pq-kind {
+    font-family: "IBM Plex Mono", monospace; font-size: 10px; color: var(--muted);
+    background: var(--card); border: 1px solid var(--hair); border-radius: 999px;
+    padding: 2px 8px; text-transform: uppercase; letter-spacing: .03em;
+  }
+  .pq-title { font-size: 13.5px; font-weight: 700; color: var(--ink); flex: 1; min-width: 0; }
+  .pq-pill {
+    font-family: "IBM Plex Mono", monospace; font-size: 10px; font-weight: 500;
+    background: var(--live-wash); color: var(--live); padding: 2px 9px; border-radius: 999px;
+  }
+  body.compact .syncbar { margin-bottom: 10px; }
+  body.compact .pending-queue { margin-bottom: 12px; }
+
+  /* ===== "+ Thread" popover body ===== */
+  #threadSheetBody { display: flex; flex-direction: column; gap: 18px; }
+  #threadSheetBody input {
+    font-family: var(--font-sans); font-size: 14px; color: var(--ink);
+    border: 1px solid var(--hair); border-radius: 12px; padding: 10px 13px; width: 100%;
+    background: var(--bg-tint);
+  }
+  #threadSheetBody input:focus { outline: none; border-color: var(--accent); }
+  #threadSheetBody select { width: 100%; }
+  #threadSheetBody .btn.primary { width: 100%; }
+  .ts-section { display: flex; flex-direction: column; gap: 9px; }
+  .ts-thread-list { display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow: auto; }
+  .ts-thread {
+    font-family: var(--font-sans); font-weight: 700; font-size: 13.5px; color: var(--ink);
+    text-align: left; border: 1px solid var(--hair); background: var(--card); border-radius: 12px;
+    padding: 9px 12px; cursor: pointer; display: flex; align-items: center; gap: 8px;
+    transition: transform .15s var(--spring), background .2s ease, border-color .2s ease;
+  }
+  .ts-thread:hover:not([disabled]) { transform: translateY(-1px); background: var(--accent-wash); border-color: var(--accent-wash); }
+  .ts-thread[disabled] { cursor: default; opacity: .6; }
+  .ts-thread-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ts-tagged-pill {
+    font-family: "IBM Plex Mono", monospace; font-size: 10px; font-weight: 500;
+    background: var(--accent-wash); color: var(--accent); padding: 2px 9px; border-radius: 999px;
+  }
+  .ts-empty, .ts-loading { color: var(--muted); font-size: 13px; line-height: 1.5; }
+
+  /* ===== Organize mode ===== */
+  /* The Organize view is a "mode": the reading pieces hide and #organizeRoot
+     shows, while the header + breadcrumb strip stay put. */
+  #organizeRoot { display: none; }
+  body.organizing #organizeRoot { display: block; }
+  body.organizing #nav,
+  body.organizing #pageHeader,
+  body.organizing #pendingQueue,
+  body.organizing #subnav,
+  body.organizing #formHost,
+  body.organizing .feed-head,
+  body.organizing .hairline,
+  body.organizing #feed { display: none !important; }
+
+  .org-top { margin-bottom: 10px; }
+  .org-head { margin: 4px 0 22px; }
+  .org-section { margin-bottom: 30px; }
+  .org-cards { display: flex; flex-direction: column; gap: 12px; margin-bottom: 12px; }
+  .org-empty { color: var(--muted); font-size: 13.5px; padding: 6px 2px; }
+
+  .org-card {
+    background: var(--card); border: 1px solid var(--hair); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 14px 16px;
+    display: flex; align-items: flex-start; gap: 12px;
+    transition: box-shadow .2s var(--spring);
+  }
+  .org-card.focused { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-wash), var(--shadow); }
+  .org-card.dragging { opacity: .45; }
+  /* drop indicator drawn with inset shadow so the row never shifts during drag */
+  .org-card.drop-before { box-shadow: inset 0 3px 0 var(--accent), var(--shadow); }
+  .org-card.drop-after  { box-shadow: inset 0 -3px 0 var(--accent), var(--shadow); }
+
+  .org-grip {
+    cursor: grab; color: var(--muted); font-size: 18px; line-height: 1;
+    padding-top: 8px; user-select: none; letter-spacing: -2px;
+  }
+  .org-grip:active { cursor: grabbing; }
+
+  .org-fields { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+  .org-title, .org-desc {
+    font-family: var(--font-sans); color: var(--ink);
+    border: 1px solid var(--hair); border-radius: 12px; padding: 9px 12px; width: 100%;
+    background: var(--bg-tint);
+  }
+  .org-title { font-weight: 800; font-size: 15px; }
+  .org-desc { font-size: 13.5px; }
+  .org-title:focus, .org-desc:focus { outline: none; border-color: var(--accent); }
+
+  .org-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .org-chip {
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; color: var(--muted);
+    background: var(--bg-tint); border: 1px solid var(--hair);
+    padding: 3px 10px; border-radius: 999px; max-width: 100%;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .org-chip.pending { background: var(--live-wash); color: var(--live); border-color: transparent; }
+  .org-rebuild {
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; font-weight: 500;
+    background: var(--accent-wash); color: var(--accent);
+    padding: 3px 10px; border-radius: 999px;
+  }
+  .org-card-actions { display: flex; align-items: center; }
+  .org-open {
+    font-family: var(--font-sans); font-weight: 700; font-size: 12.5px;
+    border: 1px solid var(--hair); background: var(--card); color: var(--muted);
+    padding: 7px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+    transition: transform .2s var(--spring), background .2s ease, color .2s ease;
+  }
+  .org-open:hover { transform: translateY(-1px); background: var(--accent-wash); color: var(--accent); border-color: var(--accent-wash); }
+  .org-add {
+    font-family: var(--font-sans); font-weight: 700; font-size: 13.5px;
+    background: transparent; color: var(--accent);
+    border: 1px dashed var(--accent); border-radius: 999px;
+    padding: 9px 16px; cursor: pointer;
+    transition: background .2s ease, transform .2s var(--spring);
+  }
+  .org-add:hover { background: var(--accent-wash); transform: translateY(-1px); }
+  body.compact .org-card { padding: 11px 13px; }
+  body.compact .org-section { margin-bottom: 20px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- login screen (shown when there is no session) -->
+<div class="login" id="loginScreen">
+  <div class="login-card">
+    <div class="login-brand">Desk</div>
+    <div class="login-sub" id="loginSub">Follow your nerdiest threads. Sign in to your private desk.</div>
+    <div id="loginForm">
+      <input id="loginEmail" type="email" placeholder="you@example.com" autocomplete="email" inputmode="email">
+      <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password">
+      <button class="btn primary" id="loginBtn">Sign in</button>
+      <div class="login-error" id="loginError" style="display:none"></div>
+      <div class="login-row">
+        <button class="login-link" id="loginToggle" type="button">Create account</button>
+        <button class="login-link muted" id="loginForgot" type="button">Forgot password?</button>
+      </div>
+      <div class="login-hint" id="loginHint" style="display:none">Use at least 6 characters for your password.</div>
+    </div>
+  </div>
+</div>
+
+<!-- the app (shown when signed in) -->
+<div class="wrap" id="appRoot" style="display:none">
+  <div class="top">
+    <div class="brandblock">
+      <div class="wordmark">DESK</div>
+      <div class="tagline">follow your nerdiest threads…</div>
+    </div>
+    <div class="top-actions">
+      <span class="next-refresh" id="nextRefresh">Next refresh in —</span>
+      <button class="icon-btn" id="organizeBtn" title="Organize your pages, sub-pages & threads">⌗ Organize</button>
+      <button class="icon-btn" id="gearBtn" title="Appearance">⚙︎ Appearance</button>
+      <button class="icon-btn" id="signoutBtn" title="Sign out">Sign out</button>
+    </div>
+  </div>
+
+  <nav class="pages" id="nav"></nav>
+
+  <div class="crumbbar"><div class="crumb" id="crumb"><span class="seg">~</span></div></div>
+
+  <div class="page-header" id="pageHeader"></div>
+
+  <div class="pending-queue" id="pendingQueue" style="display:none"></div>
+
+  <div class="subnav" id="subnav"></div>
+  <div id="formHost"></div>
+
+  <div class="feed-head">
+    <span class="section-label" id="sectionLabel">LATEST ACROSS THE BEAT</span>
+    <div class="feed-controls">
+      <span class="ctl-label">sort</span>
+      <select id="sort">
+        <option value="relevance">Most relevant</option>
+        <option value="newest">Newest</option>
+        <option value="reliability">Most reliable</option>
+      </select>
+      <span class="count" id="count"></span>
+    </div>
+  </div>
+  <div class="hairline"></div>
+
+  <div id="feed">
+    <div class="skeleton"></div>
+    <div class="skeleton"></div>
+  </div>
+
+  <!-- Organize mode lives here; hidden until the ORGANIZE button toggles it on -->
+  <div id="organizeRoot"></div>
+</div>
+
+<!-- appearance sheet -->
+<div class="sheet-backdrop" id="sheet">
+  <div class="sheet-card">
+    <div class="sheet-head"><span class="sheet-title">Appearance</span><button class="sheet-x" id="sheetClose">✕</button></div>
+    <div class="sheet-section">
+      <div class="sheet-label">Theme</div>
+      <div class="swatches" id="swatches"></div>
+    </div>
+    <div class="sheet-section row-between">
+      <div class="sheet-label">Dark mode</div>
+      <button class="toggle" id="darkToggle" role="switch" aria-label="Dark mode"><span class="knob"></span></button>
+    </div>
+    <div class="sheet-section">
+      <div class="sheet-label">Font</div>
+      <div class="seg" id="fontSeg">
+        <button data-font="jakarta">Sans</button>
+        <button data-font="serif">Serif</button>
+        <button data-font="mono">Mono</button>
+      </div>
+    </div>
+    <div class="sheet-section">
+      <div class="sheet-label">Density</div>
+      <div class="seg" id="densitySeg">
+        <button data-density="comfortable">Comfortable</button>
+        <button data-density="compact">Compact</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- "+ Thread" popover: tag a story into an existing thread, or spin up a new one -->
+<div class="sheet-backdrop" id="threadSheet">
+  <div class="sheet-card">
+    <div class="sheet-head"><span class="sheet-title">Add to a thread</span><button class="sheet-x" id="threadSheetClose">✕</button></div>
+    <div id="threadSheetBody"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+(function () {
+  var cfg = window.DESK_CONFIG;
+
+  // ---- single place to change the per-user thread cap (cost guardrail) ----
+  var THREAD_CAP = 15;
+
+  // ---- elements ----
+  var loginScreen = document.getElementById('loginScreen');
+  var loginForm    = document.getElementById('loginForm');
+  var loginEmail   = document.getElementById('loginEmail');
+  var loginPassword= document.getElementById('loginPassword');
+  var loginBtn     = document.getElementById('loginBtn');
+  var loginError   = document.getElementById('loginError');
+  var loginToggle  = document.getElementById('loginToggle');
+  var loginForgot  = document.getElementById('loginForgot');
+  var loginHint    = document.getElementById('loginHint');
+  var loginSub     = document.getElementById('loginSub');
+  var appRoot   = document.getElementById('appRoot');
+  var navEl     = document.getElementById('nav');
+  var subnavEl  = document.getElementById('subnav');
+  var formHostEl= document.getElementById('formHost');
+  var crumbEl   = document.getElementById('crumb');
+  var feedEl    = document.getElementById('feed');
+  var countEl   = document.getElementById('count');
+  var sortEl    = document.getElementById('sort');
+  var toastEl   = document.getElementById('toast');
+  var gearBtn   = document.getElementById('gearBtn');
+  var signoutBtn= document.getElementById('signoutBtn');
+  var organizeBtn  = document.getElementById('organizeBtn');
+  var organizeRoot = document.getElementById('organizeRoot');
+  var sheetEl   = document.getElementById('sheet');
+  var sheetClose= document.getElementById('sheetClose');
+  var swatchesEl= document.getElementById('swatches');
+  var darkToggle= document.getElementById('darkToggle');
+  var fontSeg   = document.getElementById('fontSeg');
+  var densitySeg= document.getElementById('densitySeg');
+  var nextRefreshEl = document.getElementById('nextRefresh');
+  var pendingQueueEl= document.getElementById('pendingQueue');
+  var pageHeaderEl  = document.getElementById('pageHeader');
+  var sectionLabelEl= document.getElementById('sectionLabel');
+  var threadSheet     = document.getElementById('threadSheet');
+  var threadSheetClose= document.getElementById('threadSheetClose');
+  var threadSheetBody = document.getElementById('threadSheetBody');
+
+  // page slug -> region filter value (page level still filters by region)
+  var REGION = {
+    'ca-leg-labor': 'ca',
+    'local-bay': 'local',
+    'national': 'national',
+    'international': 'intl'
+  };
+
+  // page slug -> editorial copy for the nav sub-label, header eyebrow + intro.
+  // Falls back to a generic shape for user-created pages with other slugs.
+  var PAGE_META = {
+    'ca-leg-labor':  { sub: 'your home beat',  eyebrow: 'CA LEGISLATURE + LABOR', intro: 'Bills, budget fights, and union campaigns shaping California.' },
+    'local-bay':     { sub: 'east bay + sf',   eyebrow: 'CITY + COUNTY POLITICS',  intro: 'Council votes, housing, and labor across the East Bay and San Francisco.' },
+    'national':      { sub: 'the big picture', eyebrow: 'CONGRESS + THE COURTS',   intro: 'Federal legislation, the midterms, and the national labor movement.' },
+    'international': { sub: 'the wider world', eyebrow: 'GLOBAL AFFAIRS',          intro: 'Security, elections, and trade unions beyond U.S. borders.' }
+  };
+  function pageMeta(slug) { return PAGE_META[slug] || { sub: '', eyebrow: 'YOUR BEAT', intro: '' }; }
+
+  var STORY_SELECT = 'id,title,source_name,url,summary,context_bullets,topics,lean,reliability_score,region,published_at,relevance_score,media_type,excerpt';
+
+  var pages = [];
+  // navigation state — which page / subpage / thread is open
+  var sel = { page: null, subpage: null, thread: null };
+  var stories = [];
+  var pendingItems = [];   // the user's status='pending' subpages + threads
+  var toastTimer = null;
+  var reqToken = 0;   // guards against slow responses landing after a newer click
+  var countdownStarted = false;
+
+  // The sync schedule, hardcoded to match .github/workflows/sync.yml (UTC hours
+  // 13:00 and 01:00 ≈ 6am / 6pm Pacific). The countdown is approximate — cron
+  // isn't second-exact and DST drifts it ~1h — which is fine.
+  var SYNC_UTC_HOURS = [13, 1];
+
+  var sb = null;
+  var currentUid = null;   // the signed-in user's id
+  var loadedFor = null;    // which uid we've already booted the app for
+
+  // ---- helpers ----
+  function esc(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+  function slugify(s) {
+    return String(s || '').toLowerCase().trim()
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'item';
+  }
+  function showError(msg) {
+    feedEl.innerHTML = '<div class="error">Something went wrong.\n\n' + esc(msg) + '</div>';
+  }
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 2200);
+  }
+  function hasText(v) { return v != null && String(v).trim() !== ''; }
+  function asArray(v) { return v == null ? [] : (Array.isArray(v) ? v : [v]); }
+  function timeAgo(iso) {
+    if (!iso) return '';
+    var then = new Date(iso).getTime();
+    if (isNaN(then)) return '';
+    var s = Math.floor((Date.now() - then) / 1000);
+    if (s < 60) return 'just now';
+    var m = Math.floor(s / 60); if (m < 60) return m + 'm ago';
+    var h = Math.floor(m / 60); if (h < 24) return h + 'h ago';
+    var d = Math.floor(h / 24); if (d < 30) return d + 'd ago';
+    var mo = Math.floor(d / 30); if (mo < 12) return mo + 'mo ago';
+    return Math.floor(mo / 12) + 'y ago';
+  }
+  function isUnratedSource(s) {
+    return s.lean === 'unrated' && Number(s.reliability_score) === 3;
+  }
+
+  // unwrap a supabase-js { data, error } response, throwing on error
+  function unwrap(res) {
+    if (res && res.error) throw new Error(res.error.message || JSON.stringify(res.error));
+    return res ? res.data : null;
+  }
+
+  if (!cfg || !cfg.url || !cfg.key) {
+    loginScreen.style.display = 'flex';
+    loginForm.innerHTML = '<div class="login-hint">config.js is missing or empty. Make sure app/config.js sets window.DESK_CONFIG = { url, key }.</div>';
+    return;
+  }
+
+  // supabase-js attaches the session JWT to every request automatically, so RLS
+  // scopes all reads/writes to the signed-in user — no manual apikey headers.
+  sb = createClient(cfg.url, cfg.key);
+
+  // =========================================================================
+  // THEMING (Light tier, per-user)
+  // =========================================================================
+  var ACCENTS = {
+    indigo: { name: 'Indigo', accent: '#5B5BD6', wash: '#ECECFB', live: '#E0641E', liveWash: '#FCEBDE' },
+    slate:  { name: 'Slate',  accent: '#4F5B6B', wash: '#EAEEF3', live: '#B7791F', liveWash: '#FAF1DC' },
+    forest: { name: 'Forest', accent: '#2F8559', wash: '#E3F2EA', live: '#C05621', liveWash: '#FBE8DC' },
+    claret: { name: 'Claret', accent: '#9F2B4E', wash: '#F7E5EC', live: '#B07A1F', liveWash: '#FAF1DC' },
+    sand:   { name: 'Sand',   accent: '#A9772F', wash: '#F3ECDC', live: '#8C5A2B', liveWash: '#F1E4D0' }
+  };
+  var THEME_ORDER = ['indigo', 'slate', 'forest', 'claret', 'sand'];
+  var LIGHT = { bg: '#EDEFF5', bgTint: '#F4F2FB', card: '#FFFFFF', ink: '#1B1B26', muted: '#777A8C', hair: '#E4E6EF' };
+  var DARK  = { bg: '#14151C', bgTint: '#1B1C25', card: '#20212B', ink: '#ECEDF6', muted: '#9698AE', hair: '#2D2E3B' };
+  var FONTS = {
+    jakarta: '"Plus Jakarta Sans", -apple-system, Segoe UI, Roboto, sans-serif',
+    serif:   'Georgia, "Iowan Old Style", "Times New Roman", serif',
+    mono:    '"IBM Plex Mono", ui-monospace, SFMono-Regular, monospace'
+  };
+
+  // current applied preferences
+  var prefs = { theme: 'indigo', dark_mode: false, font: 'jakarta', density: 'comfortable' };
+
+  function hexToRgba(hex, a) {
+    var h = hex.replace('#', '');
+    var r = parseInt(h.substring(0, 2), 16);
+    var g = parseInt(h.substring(2, 4), 16);
+    var b = parseInt(h.substring(4, 6), 16);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+  }
+  function normTheme(t) {
+    // the DB default is 'soft-default' (== the original Indigo look)
+    return ACCENTS[t] ? t : 'indigo';
+  }
+
+  function applyPrefs(p) {
+    p = p || {};
+    prefs = {
+      theme: normTheme(p.theme),
+      dark_mode: !!p.dark_mode,
+      font: FONTS[p.font] ? p.font : 'jakarta',
+      density: p.density === 'compact' ? 'compact' : 'comfortable'
+    };
+    var a = ACCENTS[prefs.theme];
+    var n = prefs.dark_mode ? DARK : LIGHT;
+    var r = document.documentElement;
+    r.style.setProperty('--bg', n.bg);
+    r.style.setProperty('--bg-tint', n.bgTint);
+    r.style.setProperty('--card', n.card);
+    r.style.setProperty('--ink', n.ink);
+    r.style.setProperty('--muted', n.muted);
+    r.style.setProperty('--hair', n.hair);
+    r.style.setProperty('--accent', a.accent);
+    r.style.setProperty('--accent-wash', prefs.dark_mode ? hexToRgba(a.accent, 0.26) : a.wash);
+    r.style.setProperty('--live', a.live);
+    r.style.setProperty('--live-wash', prefs.dark_mode ? hexToRgba(a.live, 0.24) : a.liveWash);
+    r.style.setProperty('--font-sans', FONTS[prefs.font]);
+    document.body.classList.toggle('compact', prefs.density === 'compact');
+  }
+
+  async function loadPreferences() {
+    try {
+      var data = unwrap(await sb.from('preferences').select('theme,dark_mode,font,density').maybeSingle());
+      applyPrefs(data || {});
+    } catch (e) {
+      applyPrefs({});
+    }
+    syncSheet();
+  }
+
+  async function savePreferences() {
+    if (!currentUid) return;
+    try {
+      await sb.from('preferences').upsert({
+        user_id: currentUid,
+        theme: prefs.theme,
+        dark_mode: prefs.dark_mode,
+        font: prefs.font,
+        density: prefs.density,
+        updated_at: new Date().toISOString()
+      });
+    } catch (e) { /* non-fatal — the look is already applied locally */ }
+  }
+
+  // appearance sheet wiring
+  function renderSwatches() {
+    swatchesEl.innerHTML = THEME_ORDER.map(function (k) {
+      var a = ACCENTS[k];
+      return '<button class="swatch" data-theme="' + k + '"><span style="background:' + a.accent + '"></span>' + esc(a.name) + '</button>';
+    }).join('');
+  }
+  function syncSheet() {
+    Array.prototype.forEach.call(swatchesEl.querySelectorAll('.swatch'), function (b) {
+      b.classList.toggle('sel', b.getAttribute('data-theme') === prefs.theme);
+    });
+    darkToggle.classList.toggle('on', prefs.dark_mode);
+    Array.prototype.forEach.call(fontSeg.querySelectorAll('button'), function (b) {
+      b.classList.toggle('sel', b.getAttribute('data-font') === prefs.font);
+    });
+    Array.prototype.forEach.call(densitySeg.querySelectorAll('button'), function (b) {
+      b.classList.toggle('sel', b.getAttribute('data-density') === prefs.density);
+    });
+  }
+  function setPref(key, val) {
+    var next = { theme: prefs.theme, dark_mode: prefs.dark_mode, font: prefs.font, density: prefs.density };
+    next[key] = val;
+    applyPrefs(next);
+    syncSheet();
+    savePreferences();
+  }
+  gearBtn.addEventListener('click', function () { sheetEl.classList.add('show'); });
+  sheetClose.addEventListener('click', function () { sheetEl.classList.remove('show'); });
+  sheetEl.addEventListener('click', function (e) { if (e.target === sheetEl) sheetEl.classList.remove('show'); });
+  swatchesEl.addEventListener('click', function (e) {
+    var b = e.target.closest('.swatch'); if (b) setPref('theme', b.getAttribute('data-theme'));
+  });
+  darkToggle.addEventListener('click', function () { setPref('dark_mode', !prefs.dark_mode); });
+  fontSeg.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (b) setPref('font', b.getAttribute('data-font'));
+  });
+  densitySeg.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (b) setPref('density', b.getAttribute('data-density'));
+  });
+  renderSwatches();
+  syncSheet();
+
+  // =========================================================================
+  // AUTH (email + password)
+  // =========================================================================
+  function showLogin() { loginScreen.style.display = 'flex'; appRoot.style.display = 'none'; }
+  function showApp()   { loginScreen.style.display = 'none'; appRoot.style.display = 'block'; }
+
+  // 'signin' = returning user; 'signup' = creating a new account
+  var authMode = 'signin';
+
+  function showLoginError(msg) { loginError.textContent = msg; loginError.style.display = 'block'; }
+  function clearLoginError() { loginError.textContent = ''; loginError.style.display = 'none'; }
+
+  // Switch the form between Sign in and Create account.
+  function setMode(mode) {
+    authMode = mode;
+    clearLoginError();
+    if (mode === 'signup') {
+      loginSub.textContent = 'Create your private Desk — pick an email and a password (at least 6 characters).';
+      loginBtn.textContent = 'Create account';
+      loginToggle.textContent = 'Have an account? Sign in';
+      loginPassword.setAttribute('autocomplete', 'new-password');
+      loginHint.style.display = 'block';
+    } else {
+      loginSub.textContent = 'Follow your nerdiest threads. Sign in to your private desk.';
+      loginBtn.textContent = 'Sign in';
+      loginToggle.textContent = 'Create account';
+      loginPassword.setAttribute('autocomplete', 'current-password');
+      loginHint.style.display = 'none';
+    }
+    loginBtn.disabled = false;
+  }
+
+  // Turn Supabase's technical errors into plain English shown on the form.
+  function friendlyAuthError(err, mode) {
+    var m = ((err && (err.message || err.error_description)) || '') + '';
+    var low = m.toLowerCase();
+    if (low.indexOf('invalid login') !== -1 || low.indexOf('invalid credentials') !== -1)
+      return "That email and password don't match. Check them, or create an account.";
+    if (low.indexOf('already registered') !== -1 || low.indexOf('already been registered') !== -1 || low.indexOf('user already') !== -1)
+      return 'That email is already registered — try signing in instead.';
+    if (low.indexOf('at least 6') !== -1 || low.indexOf('password should be') !== -1 || low.indexOf('weak password') !== -1)
+      return 'Password must be at least 6 characters.';
+    if (low.indexOf('email not confirmed') !== -1)
+      return 'Please confirm your email first — check your inbox for the confirmation link, then sign in.';
+    if (low.indexOf('unable to validate email') !== -1 || low.indexOf('invalid email') !== -1)
+      return "That email address doesn't look right.";
+    if (low.indexOf('rate limit') !== -1 || low.indexOf('too many') !== -1)
+      return 'Too many attempts — wait a moment and try again.';
+    return m || 'Something went wrong — please try again.';
+  }
+
+  async function submitAuth() {
+    var email = (loginEmail.value || '').trim();
+    var password = loginPassword.value || '';
+    clearLoginError();
+    if (!email) { showLoginError('Enter your email.'); return; }
+    if (!password) { showLoginError('Enter your password.'); return; }
+    if (authMode === 'signup' && password.length < 6) {
+      showLoginError('Password must be at least 6 characters.'); return;
+    }
+
+    loginBtn.disabled = true;
+    loginBtn.textContent = authMode === 'signup' ? 'Creating…' : 'Signing in…';
+
+    try {
+      if (authMode === 'signup') {
+        var up = await sb.auth.signUp({ email: email, password: password });
+        if (up.error) throw up.error;
+        // If the Supabase project has "Confirm email" turned OFF, signUp returns
+        // a session and onAuthStateChange takes over (seeding the starter set).
+        // If it's ON, there's no session yet — try an immediate sign-in; if that
+        // fails, the email needs confirming first.
+        if (!(up.data && up.data.session)) {
+          var si = await sb.auth.signInWithPassword({ email: email, password: password });
+          if (si.error) {
+            setMode('signin');
+            loginBtn.disabled = false; loginBtn.textContent = 'Sign in';
+            showLoginError('Account created. Please check your email to confirm it, then sign in.');
+            return;
+          }
+        }
+        // success → onAuthStateChange runs startApp() → ensureStarterSet()
+      } else {
+        var res = await sb.auth.signInWithPassword({ email: email, password: password });
+        if (res.error) throw res.error;
+        // success → onAuthStateChange loads the app
+      }
+    } catch (err) {
+      loginBtn.disabled = false;
+      loginBtn.textContent = authMode === 'signup' ? 'Create account' : 'Sign in';
+      showLoginError(friendlyAuthError(err, authMode));
+    }
+  }
+
+  // Fallback only: this STILL sends an email (a password-reset link). Normal
+  // sign-in is email + password and never emails anyone. Update the redirect URL
+  // below if your live site address is different.
+  async function forgotPassword() {
+    var email = (loginEmail.value || '').trim();
+    clearLoginError();
+    if (!email) { showLoginError('Type your email above first, then tap “Forgot password?”.'); return; }
+    try {
+      var res = await sb.auth.resetPasswordForEmail(email, {
+        redirectTo: 'https://kpsmas123-bit.github.io/desk/'
+      });
+      if (res.error) throw res.error;
+      showLoginError('If that email has an account, a password-reset link is on its way.');
+    } catch (err) {
+      showLoginError(friendlyAuthError(err, 'signin'));
+    }
+  }
+
+  loginBtn.addEventListener('click', submitAuth);
+  loginEmail.addEventListener('keydown', function (e) { if (e.key === 'Enter') submitAuth(); });
+  loginPassword.addEventListener('keydown', function (e) { if (e.key === 'Enter') submitAuth(); });
+  loginToggle.addEventListener('click', function () { setMode(authMode === 'signin' ? 'signup' : 'signin'); });
+  loginForgot.addEventListener('click', forgotPassword);
+  setMode('signin');
+
+  signoutBtn.addEventListener('click', function () { sb.auth.signOut(); });
+
+  // onAuthStateChange fires an INITIAL_SESSION event on subscribe, so it also
+  // covers the page-load session check, plus sign-in / sign-up / sign-out.
+  sb.auth.onAuthStateChange(function (event, session) {
+    var uid = session && session.user ? session.user.id : null;
+    if (uid) {
+      currentUid = uid;
+      showApp();
+      if (loadedFor !== uid) { loadedFor = uid; startApp(); }
+    } else {
+      currentUid = null; loadedFor = null;
+      showLogin();
+    }
+  });
+
+  // =========================================================================
+  // COUNTDOWN + PENDING QUEUE
+  // =========================================================================
+  function nextSyncDate() {
+    var now = new Date();
+    var best = null;
+    // Look across today and tomorrow (UTC) for the soonest scheduled hour.
+    for (var d = 0; d <= 1; d++) {
+      for (var i = 0; i < SYNC_UTC_HOURS.length; i++) {
+        var dt = new Date(Date.UTC(
+          now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + d,
+          SYNC_UTC_HOURS[i], 0, 0
+        ));
+        if (dt.getTime() > now.getTime() && (best === null || dt < best)) best = dt;
+      }
+    }
+    return best;
+  }
+
+  function lastSyncDate() {
+    var now = new Date();
+    var best = null;
+    for (var d = 0; d >= -1; d--) {
+      for (var i = 0; i < SYNC_UTC_HOURS.length; i++) {
+        var dt = new Date(Date.UTC(
+          now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + d,
+          SYNC_UTC_HOURS[i], 0, 0
+        ));
+        if (dt.getTime() <= now.getTime() && (best === null || dt > best)) best = dt;
+      }
+    }
+    return best;
+  }
+  function fmtTime(dt) {
+    if (!dt) return '';
+    var h = dt.getHours(), m = dt.getMinutes();
+    var ap = h >= 12 ? 'PM' : 'AM';
+    var hh = h % 12; if (hh === 0) hh = 12;
+    return hh + ':' + (m < 10 ? '0' + m : m) + ' ' + ap;
+  }
+
+  function tickCountdown() {
+    var next = nextSyncDate();
+    if (!next) { nextRefreshEl.textContent = 'Next refresh in —'; return; }
+    var ms = Math.max(0, next.getTime() - Date.now());
+    var totalMin = Math.floor(ms / 60000);
+    var h = Math.floor(totalMin / 60);
+    var m = totalMin % 60;
+    var txt = h + 'h ' + m + 'm';
+    nextRefreshEl.textContent = 'Next refresh in ' + txt;
+    var pqWhen = document.getElementById('pqWhen');
+    if (pqWhen) pqWhen.textContent = '· in ' + txt;
+  }
+
+  function renderPendingQueue() {
+    if (!pendingItems.length) {
+      pendingQueueEl.style.display = 'none';
+      pendingQueueEl.innerHTML = '';
+      return;
+    }
+    pendingQueueEl.style.display = 'block';
+    var head = '<div class="pq-head">Building at next refresh <span class="pq-when" id="pqWhen"></span></div>';
+    var list = pendingItems.map(function (it) {
+      return '<div class="pq-item">' +
+        '<span class="pq-kind">' + (it.kind === 'subpage' ? 'subpage' : 'thread') + '</span>' +
+        '<span class="pq-title">' + esc(it.title) + '</span>' +
+        '<span class="pq-pill">queued</span>' +
+      '</div>';
+    }).join('');
+    pendingQueueEl.innerHTML = '<div class="pq-card">' + head + list + '</div>';
+    tickCountdown();   // fill the "· in Xh Ym" immediately
+  }
+
+  async function loadPendingQueue() {
+    try {
+      var subs = unwrap(await sb.from('subpages').select('id,title,status').eq('status', 'pending')) || [];
+      var ths  = unwrap(await sb.from('threads').select('id,title,status').eq('status', 'pending')) || [];
+      pendingItems = subs.map(function (s) { return { kind: 'subpage', id: s.id, title: s.title }; })
+        .concat(ths.map(function (t) { return { kind: 'thread', id: t.id, title: t.title }; }));
+    } catch (e) {
+      pendingItems = [];
+    }
+    renderPendingQueue();
+  }
+
+  // =========================================================================
+  // APP BOOT (after login)
+  // =========================================================================
+  async function startApp() {
+    if (!countdownStarted) {
+      countdownStarted = true;
+      tickCountdown();
+      setInterval(tickCountdown, 60000);   // tick live, once a minute
+    }
+    try {
+      await loadPreferences();
+      await ensureStarterSet();
+      await loadPages();
+      await loadPendingQueue();
+    } catch (err) {
+      showError(err.message || String(err));
+    }
+  }
+
+  // STEP 3 — give brand-new users a fresh starter Desk. Do NOT set user_id:
+  // the column default auth.uid() stamps it to the signed-in user.
+  async function ensureStarterSet() {
+    var existing = unwrap(await sb.from('pages').select('id').limit(1));
+    if (existing && existing.length) return;  // already has pages — nothing to do
+
+    var createdPages = unwrap(await sb.from('pages').insert([
+      { title: 'CA Leg + Labor', slug: 'ca-leg-labor', position: 0 },
+      { title: 'Local Bay', slug: 'local-bay', position: 1 },
+      { title: 'National', slug: 'national', position: 2 },
+      { title: 'International', slug: 'international', position: 3 }
+    ]).select());
+
+    var ca = (createdPages || []).filter(function (p) { return p.slug === 'ca-leg-labor'; })[0];
+    if (!ca) return;
+
+    await sb.from('subpages').insert([
+      { page_id: ca.id, title: 'State legislature & bills', slug: 'state-legislature-bills', status: 'pending', position: 0 },
+      { page_id: ca.id, title: 'Labor campaigns', slug: 'labor-campaigns', status: 'pending', position: 1 },
+      { page_id: ca.id, title: 'State prop campaigns', slug: 'state-prop-camp', status: 'pending', position: 2 },
+      { page_id: ca.id, title: 'Midterm / Congress', slug: 'midterm-congress', status: 'pending', position: 3 }
+    ]);
+  }
+
+  async function loadPages() {
+    // Prefer selecting the optional `description` column (migration 0007). If
+    // that migration hasn't been applied yet the column doesn't exist and the
+    // query errors — fall back to the original select so the app still boots.
+    var data;
+    try {
+      data = unwrap(await sb.from('pages').select('id,title,slug,position,description').order('position'));
+    } catch (e) {
+      data = unwrap(await sb.from('pages').select('id,title,slug,position').order('position'));
+    }
+    if (!data || !data.length) { showError('No pages found for your account.'); return; }
+    pages = data;
+    selectPage(pages[0]);
+  }
+
+  // ---- breadcrumb ----
+  function setCrumb() {
+    var parts = ['<span class="seg">~</span>'];
+    if (sel.page) {
+      parts.push('<span class="sep">/</span>');
+      parts.push('<button class="seg" data-up="page">' + esc(sel.page.slug) + '</button>');
+    }
+    if (sel.subpage) {
+      parts.push('<span class="sep">/</span>');
+      parts.push('<button class="seg" data-up="subpage">' + esc(sel.subpage.slug || slugify(sel.subpage.title)) + '</button>');
+    }
+    if (sel.thread) {
+      parts.push('<span class="sep">/</span>');
+      parts.push('<span class="seg">' + esc(slugify(sel.thread.title)) + '</span>');
+    }
+    crumbEl.innerHTML = parts.join('');
+    renderPageHeader();
+  }
+
+  // editorial header block: eyebrow + big headline + muted intro, adapting to
+  // the open page / subpage / thread.
+  function renderPageHeader() {
+    if (!pageHeaderEl) return;
+    if (!sel.page) { pageHeaderEl.innerHTML = ''; return; }
+    var updated = 'UPDATED ' + fmtTime(lastSyncDate());
+    var eyebrow, headline, intro;
+    if (sel.thread) {
+      eyebrow = (sel.subpage ? sel.subpage.title : sel.page.title).toUpperCase() + ' · ' + updated;
+      headline = sel.thread.title;
+      intro = sel.thread.description ||
+        (sel.thread.status === 'pending' ? 'Queued — its query builds at the next refresh.' : 'A live thread tracking this topic.');
+    } else if (sel.subpage) {
+      eyebrow = sel.page.title.toUpperCase() + ' · ' + updated;
+      headline = sel.subpage.title;
+      intro = sel.subpage.description ||
+        (sel.subpage.status === 'pending' ? 'Queued — its query builds at the next refresh.' : 'A live sub-page tracking this topic.');
+    } else {
+      var meta = pageMeta(sel.page.slug);
+      eyebrow = meta.eyebrow + ' · ' + updated;
+      headline = sel.page.title;
+      // a page's own description (set in Organize) wins over the canned intro
+      intro = hasText(sel.page.description) ? sel.page.description : meta.intro;
+    }
+    pageHeaderEl.innerHTML =
+      '<div class="eyebrow">' + esc(eyebrow) + '</div>' +
+      '<h1 class="page-h1">' + esc(headline) + '</h1>' +
+      (intro ? '<p class="page-intro">' + esc(intro) + '</p>' : '');
+  }
+  crumbEl.addEventListener('click', function (e) {
+    var btn = e.target.closest('button.seg');
+    if (!btn) return;
+    if (btn.getAttribute('data-up') === 'page') selectPage(sel.page);
+    else if (btn.getAttribute('data-up') === 'subpage') selectSubpage(sel.subpage);
+  });
+
+  // ---- top nav (pages) ----
+  function renderNav() {
+    navEl.innerHTML = '';
+    pages.forEach(function (p) {
+      var b = document.createElement('button');
+      b.className = 'pill page' + (sel.page === p ? ' active' : '');
+      var meta = pageMeta(p.slug);
+      b.innerHTML = '<span class="pill-title">' + esc(p.title) + '</span>' +
+        (meta.sub ? '<span class="pill-sub">' + esc(meta.sub) + '</span>' : '');
+      b.addEventListener('click', function () { selectPage(p); });
+      navEl.appendChild(b);
+    });
+  }
+
+  // ---- second row: subpages (at page level) or threads (deeper) ----
+  function pendingDot(item) {
+    return item.status === 'pending' ? '<span class="pending-dot">pending</span>' : '';
+  }
+  function renderSubnav() {
+    closeForm();
+    subnavEl.innerHTML = '';
+    var atPageLevel = !sel.subpage;
+    var items = atPageLevel ? (sel.page._subpages || []) : (sel.subpage._threads || []);
+
+    items.forEach(function (item) {
+      var b = document.createElement('button');
+      var isActive = atPageLevel ? false : (sel.thread === item);
+      b.className = 'pill' + (isActive ? ' active' : '');
+      // Thread chips show a real story count (match_count from the health step).
+      // Subpage chips have no per-subpage story count fetched, so none is shown.
+      var count = (!atPageLevel && typeof item.match_count === 'number')
+        ? '<span class="chip-count">' + item.match_count + '</span>' : '';
+      b.innerHTML = '<span>' + esc(item.title) + '</span>' + count + pendingDot(item);
+      b.addEventListener('click', function () {
+        if (atPageLevel) selectSubpage(item);
+        else selectThread(item);
+      });
+      subnavEl.appendChild(b);
+    });
+
+    var add = document.createElement('button');
+    add.className = 'pill add';
+    add.textContent = atPageLevel ? '+ New sub-page' : '+ New thread';
+    add.addEventListener('click', function () { openForm(atPageLevel ? 'subpage' : 'thread'); });
+    subnavEl.appendChild(add);
+  }
+
+  // ---- create form ----
+  function closeForm() { formHostEl.innerHTML = ''; }
+  function openForm(kind) {
+    var noun = kind === 'subpage' ? 'subpage' : 'thread';
+    var parentName = kind === 'subpage' ? sel.page.title : sel.subpage.title;
+    formHostEl.innerHTML =
+      '<div class="newform">' +
+        '<div class="ftitle">New ' + noun + ' under "' + esc(parentName) + '"</div>' +
+        '<input id="f_title" placeholder="Title (e.g. Oakland city council)" autocomplete="off">' +
+        '<input id="f_desc" placeholder="One line: what should this track?" autocomplete="off">' +
+        '<div class="hint">It appears right away as <b>pending</b>. Its search query is written once, automatically, the next time the sync runs — then it fills itself in. (No story is saved here; layers match live.)</div>' +
+        '<div class="row">' +
+          '<button class="btn primary" id="f_create">Create</button>' +
+          '<button class="btn ghost" id="f_cancel">Cancel</button>' +
+        '</div>' +
+      '</div>';
+    var titleEl = document.getElementById('f_title');
+    titleEl.focus();
+    document.getElementById('f_cancel').addEventListener('click', closeForm);
+    document.getElementById('f_create').addEventListener('click', function () { submitForm(kind); });
+    titleEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') submitForm(kind); });
+    document.getElementById('f_desc').addEventListener('keydown', function (e) { if (e.key === 'Enter') submitForm(kind); });
+  }
+
+  async function submitForm(kind) {
+    var title = document.getElementById('f_title').value.trim();
+    var desc = document.getElementById('f_desc').value.trim();
+    if (!title) { toast('Give it a title first'); return; }
+
+    // STEP 4 — per-user thread cap (cost guardrail). Count this user's threads
+    // (RLS scopes the count to them) and block past the cap.
+    if (kind === 'thread') {
+      try {
+        var res = await sb.from('threads').select('id', { count: 'exact', head: true });
+        if (res.error) throw res.error;
+        if ((res.count || 0) >= THREAD_CAP) {
+          toast("You've hit your thread limit (" + THREAD_CAP + ") — archive one to add another");
+          return;
+        }
+      } catch (e) {
+        toast('Could not check your thread count — try again');
+        return;
+      }
+    }
+
+    var btn = document.getElementById('f_create');
+    btn.disabled = true; btn.textContent = 'Creating…';
+
+    var table, body;
+    if (kind === 'subpage') {
+      table = 'subpages';
+      body = {
+        page_id: sel.page.id, title: title, slug: slugify(title),
+        description: desc, status: 'pending', query: null,
+        position: (sel.page._subpages || []).length
+      };
+    } else {
+      table = 'threads';
+      body = {
+        subpage_id: sel.subpage.id, title: title, description: desc,
+        status: 'pending', derived_query: null,
+        position: (sel.subpage._threads || []).length
+      };
+    }
+
+    // No user_id here on purpose — the column default auth.uid() stamps it,
+    // and the RLS WITH CHECK confirms it matches the signed-in user.
+    try {
+      var rows = unwrap(await sb.from(table).insert(body).select());
+      var created = Array.isArray(rows) && rows.length ? rows[0] : body;
+      closeForm();
+      if (kind === 'subpage') {
+        sel.page._subpages = (sel.page._subpages || []).concat([created]);
+        renderSubnav();
+        selectSubpage(created);
+      } else {
+        sel.subpage._threads = (sel.subpage._threads || []).concat([created]);
+        selectThread(created);
+      }
+      loadPendingQueue();   // the new item joins the "Building at next refresh" list
+      toast('Created — query builds on next sync');
+    } catch (err) {
+      btn.disabled = false; btn.textContent = 'Create';
+      toast('Could not save');
+      showError('Could not create the ' + kind + '.\n\n' + (err.message || String(err)));
+    }
+  }
+
+  // ---- "+ Thread" popover: tag a story into a thread (existing or new) ----
+  threadSheetClose.addEventListener('click', function () { threadSheet.classList.remove('show'); });
+  threadSheet.addEventListener('click', function (e) { if (e.target === threadSheet) threadSheet.classList.remove('show'); });
+
+  async function openThreadSheet(story) {
+    threadSheetBody.innerHTML = '<div class="ts-loading">Loading your threads…</div>';
+    threadSheet.classList.add('show');
+
+    var threads = [];
+    var subpages = [];
+    var tagged = {};   // thread_id -> true for threads this story is already in
+    try {
+      threads = unwrap(await sb.from('threads')
+        .select('id,title,status').order('created_at', { ascending: false })) || [];
+    } catch (e) { threads = []; }
+    try {
+      // Subpages to home a new thread in: the current page's if one is in
+      // context, otherwise all of the user's.
+      var sq = sb.from('subpages').select('id,title,page_id').order('position');
+      if (sel.page) sq = sq.eq('page_id', sel.page.id);
+      subpages = unwrap(await sq) || [];
+    } catch (e) { subpages = []; }
+    try {
+      var tg = unwrap(await sb.from('story_threads')
+        .select('thread_id').eq('story_id', story.id)) || [];
+      tg.forEach(function (r) { tagged[r.thread_id] = true; });
+    } catch (e) { /* leave tagged empty */ }
+
+    renderThreadSheet(story, threads, subpages, tagged);
+  }
+
+  function renderThreadSheet(story, threads, subpages, tagged) {
+    var rows = threads.length
+      ? threads.map(function (t) {
+          var isTagged = !!tagged[t.id];
+          var right = isTagged
+            ? '<span class="ts-tagged-pill">added</span>'
+            : (t.status === 'pending' ? '<span class="pending-dot">pending</span>' : '');
+          return '<button class="ts-thread" data-thread-id="' + esc(t.id) + '"' + (isTagged ? ' disabled' : '') + '>' +
+            '<span class="ts-thread-title">' + esc(t.title) + '</span>' + right +
+          '</button>';
+        }).join('')
+      : '<div class="ts-empty">No threads yet — create one above.</div>';
+
+    var subOptions = subpages.map(function (sp) {
+      return '<option value="' + esc(sp.id) + '">' + esc(sp.title) + '</option>';
+    }).join('');
+
+    threadSheetBody.innerHTML =
+      '<div class="ts-section">' +
+        '<div class="sheet-label">New thread from this story</div>' +
+        '<input id="ts_title" placeholder="Thread title" autocomplete="off">' +
+        '<input id="ts_desc" placeholder="One line: what should this track?" autocomplete="off">' +
+        '<select id="ts_subpage">' +
+          '<option value="" disabled selected>Choose a subpage…</option>' +
+          subOptions +
+          '<option value="__new__">+ New subpage…</option>' +
+        '</select>' +
+        '<input id="ts_newsub" placeholder="New subpage title" autocomplete="off" style="display:none">' +
+        '<button class="btn primary" id="ts_create">Create &amp; tag</button>' +
+      '</div>' +
+      '<div class="ts-section">' +
+        '<div class="sheet-label">Add to existing thread</div>' +
+        '<div class="ts-thread-list">' + rows + '</div>' +
+      '</div>';
+
+    // prefill the title with the story's headline as a starting point
+    var titleEl = document.getElementById('ts_title');
+    titleEl.value = story.title || '';
+
+    // reveal the inline "new subpage" field only when that option is picked
+    var subSel = document.getElementById('ts_subpage');
+    var newSub = document.getElementById('ts_newsub');
+    subSel.addEventListener('change', function () {
+      var isNew = subSel.value === '__new__';
+      newSub.style.display = isNew ? 'block' : 'none';
+      if (isNew) newSub.focus();
+    });
+
+    document.getElementById('ts_create').addEventListener('click', function () { createThreadFromStory(story); });
+    titleEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') createThreadFromStory(story); });
+    document.getElementById('ts_desc').addEventListener('keydown', function (e) { if (e.key === 'Enter') createThreadFromStory(story); });
+    newSub.addEventListener('keydown', function (e) { if (e.key === 'Enter') createThreadFromStory(story); });
+
+    threadSheetBody.querySelector('.ts-thread-list').addEventListener('click', function (e) {
+      var b = e.target.closest('.ts-thread');
+      if (!b || b.disabled) return;
+      tagStoryToThread(story, b.getAttribute('data-thread-id'));
+    });
+  }
+
+  async function tagStoryToThread(story, threadId) {
+    try {
+      // RLS on story_threads checks the thread belongs to this user.
+      unwrap(await sb.from('story_threads').insert({ story_id: story.id, thread_id: threadId }));
+      threadSheet.classList.remove('show');
+      toast('Added to thread');
+    } catch (err) {
+      // primary key (story_id, thread_id) collision == already tagged
+      toast('Already in that thread');
+    }
+  }
+
+  async function createThreadFromStory(story) {
+    var title = (document.getElementById('ts_title').value || '').trim();
+    var desc = (document.getElementById('ts_desc').value || '').trim();
+    if (!title) { toast('Give it a title first'); return; }
+
+    // A thread MUST have a subpage home — never null. Require a choice first.
+    var subSel = document.getElementById('ts_subpage');
+    var subChoice = subSel.value;
+    if (!subChoice) { toast('Choose a subpage for this thread'); return; }
+    var newSubTitle = '';
+    if (subChoice === '__new__') {
+      newSubTitle = (document.getElementById('ts_newsub').value || '').trim();
+      if (!newSubTitle) { toast('Name the new subpage first'); return; }
+    }
+
+    // We need a page to home a new subpage under. sel.page is always set in app
+    // context, but guard anyway.
+    if (subChoice === '__new__' && !sel.page) { toast('Open a page first'); return; }
+
+    // Same per-user thread cap as the "+ New thread" flow (pending + tracking).
+    // Checked BEFORE creating any subpage, so we never leave an orphan subpage.
+    try {
+      var res = await sb.from('threads').select('id', { count: 'exact', head: true });
+      if (res.error) throw res.error;
+      if ((res.count || 0) >= THREAD_CAP) {
+        toast("You've hit your thread limit (" + THREAD_CAP + ") — archive one to add another");
+        return;
+      }
+    } catch (e) {
+      toast('Could not check your thread count — try again');
+      return;
+    }
+
+    var btn = document.getElementById('ts_create');
+    btn.disabled = true; btn.textContent = 'Creating…';
+
+    try {
+      // 1. Resolve the subpage home — create it first if "+ New subpage".
+      var subId = subChoice;
+      var createdSub = null;
+      if (subChoice === '__new__') {
+        var subBody = {
+          page_id: sel.page.id, title: newSubTitle, slug: slugify(newSubTitle),
+          description: '', status: 'pending', query: null,
+          position: (sel.page._subpages || []).length
+        };
+        var subRows = unwrap(await sb.from('subpages').insert(subBody).select());
+        createdSub = Array.isArray(subRows) && subRows.length ? subRows[0] : null;
+        if (!createdSub) throw new Error('Subpage created but not returned.');
+        subId = createdSub.id;
+        // keep the page's cached subpage list in sync
+        if (sel.page) sel.page._subpages = (sel.page._subpages || []).concat([createdSub]);
+      }
+
+      // 2. Create the thread under that subpage — subpage_id is always set.
+      var body = {
+        subpage_id: subId, title: title, description: desc,
+        status: 'pending', derived_query: null,
+        position: 0
+      };
+      var rows = unwrap(await sb.from('threads').insert(body).select());
+      var created = Array.isArray(rows) && rows.length ? rows[0] : null;
+      if (!created) throw new Error('Thread created but not returned.');
+
+      // 3. Tag this story into the brand-new thread right away.
+      unwrap(await sb.from('story_threads').insert({ story_id: story.id, thread_id: created.id }));
+
+      // reflect in the nav: new subpage (at page level) and/or new thread (under
+      // the open subpage)
+      if (createdSub && !sel.subpage) renderSubnav();
+      if (sel.subpage && created.subpage_id === sel.subpage.id) {
+        sel.subpage._threads = (sel.subpage._threads || []).concat([created]);
+        renderSubnav();
+      }
+      loadPendingQueue();
+      threadSheet.classList.remove('show');
+      toast('Thread created & tagged — query builds next sync');
+    } catch (err) {
+      btn.disabled = false; btn.textContent = 'Create & tag';
+      toast('Could not create thread');
+    }
+  }
+
+  // ---- story fetching per level ----
+  function sortedRows() {
+    var sort = sortEl.value;
+    var rows = stories.slice();
+    if (sort === 'newest') {
+      rows.sort(function (a, b) { return String(b.published_at || '').localeCompare(String(a.published_at || '')); });
+    } else if (sort === 'reliability') {
+      rows.sort(function (a, b) { return (Number(b.reliability_score) || 0) - (Number(a.reliability_score) || 0); });
+    }
+    return rows;
+  }
+  function pendingState(noun) {
+    feedEl.innerHTML = '<div class="state"><span class="big">Pending — query builds on the next sync</span>' +
+      'This ' + noun + ' has no search query yet. Run the sync ' +
+      '(<code>python3 ingest/run_ingest.py</code>) and it will write the query once, ' +
+      'then fill itself in here automatically.</div>';
+    countEl.textContent = 'showing 0 stories';
+  }
+
+  async function loadStories() {
+    var myToken = ++reqToken;
+    feedEl.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
+    countEl.textContent = 'loading…';
+
+    var level = sel.thread ? 'thread' : (sel.subpage ? 'subpage' : 'page');
+
+    try {
+      var data;
+      if (level === 'page') {
+        // Phase-5 behavior: region filter, hide noise, relevance order.
+        var region = REGION[sel.page.slug];
+        var q = sb.from('stories').select(STORY_SELECT)
+          .gt('relevance_score', 0)
+          .order('relevance_score', { ascending: false, nullsFirst: false })
+          .limit(100);
+        if (region) q = q.eq('region', region);
+        data = unwrap(await q);
+      } else {
+        // subpage/thread: match live by that level's query, ranked by ts_rank.
+        var qry = level === 'thread' ? sel.thread.derived_query : sel.subpage.query;
+        if (!hasText(qry)) { pendingState(level); return; }
+        data = unwrap(await sb.rpc('search_stories', { q: qry }));
+      }
+      if (myToken !== reqToken) return;   // a newer navigation won; ignore this
+      if (!Array.isArray(data)) throw new Error('Expected a list of stories but got:\n\n' + JSON.stringify(data, null, 2));
+      stories = data;
+      renderFeed();
+    } catch (err) {
+      if (myToken !== reqToken) return;
+      showError(err.message || String(err));
+    }
+  }
+
+  // ---- feed rendering (Phase 5 tiles, unchanged) ----
+  function tileHtml(s) {
+    // mono meta row, mockup order: source · lean · time, then topic tags
+    var meta = '';
+    if (hasText(s.source_name)) meta += '<span class="src">' + esc(s.source_name) + '</span>';
+    if (s.lean && s.lean !== 'unrated') meta += '<span class="lean">' + esc(s.lean) + '</span>';
+    var ago = timeAgo(s.published_at);
+    if (ago) meta += '<span class="dot">·</span><span>' + esc(ago) + '</span>';
+    asArray(s.topics).forEach(function (t) { if (hasText(t)) meta += '<span class="topic">' + esc(t) + '</span>'; });
+
+    var head = hasText(s.url)
+      ? '<a href="' + esc(s.url) + '" target="_blank" rel="noopener">' + esc(s.title || '(untitled)') + '</a>'
+      : esc(s.title || '(untitled)');
+
+    var body = hasText(s.summary)
+      ? '<p class="summary">' + esc(s.summary) + '</p>'
+      : '<p class="headline-only">Headline only — open to read</p>';
+
+    var bullets = '';
+    var bl = asArray(s.context_bullets).filter(hasText);
+    if (bl.length) {
+      bullets = '<ul class="bullets">' + bl.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>';
+    }
+
+    var verify = isUnratedSource(s) ? '<div class="verify-note">unrated source — verify</div>' : '';
+
+    // Further reading: the article link(s). Only the primary url exists today —
+    // alt_links isn't populated by ingest, so this is single-link for now and
+    // only labels "MULTI-LINK" if more links ever arrive.
+    var links = [];
+    if (hasText(s.url)) links.push({ url: s.url, label: s.source_name || 'Read the article' });
+    asArray(s.alt_links).forEach(function (l) {
+      if (l && hasText(l.url || l)) links.push({ url: (l.url || l), label: (l.label || l.source || 'Related link') });
+    });
+    var further = '';
+    if (links.length) {
+      further = '<div class="further">' +
+        '<div class="further-head">Further reading' + (links.length > 1 ? ' · multi-link' : '') + '</div>' +
+        '<div class="further-links">' +
+          links.map(function (l) {
+            return '<a class="further-link" href="' + esc(l.url) + '" target="_blank" rel="noopener">' + esc(l.label) + ' ↗</a>';
+          }).join('') +
+        '</div>' +
+      '</div>';
+    }
+
+    return '<article class="tile" data-story-id="' + esc(s.id) + '">' +
+      '<div class="meta">' + meta + '</div>' +
+      '<h2>' + head + '</h2>' + body + bullets + verify + further +
+      '<div class="actions">' +
+        '<button class="act" data-act="save">☆ Save</button>' +
+        '<button class="act" data-act="thread">+ Thread</button>' +
+      '</div>' +
+    '</article>';
+  }
+  function threadEmptyHtml(t) {
+    // A live ('tracking') thread that currently matches nothing: show its health
+    // so a quiet thread reads as quiet, not broken.
+    var last = t.last_match_at
+      ? 'Last match ' + timeAgo(t.last_match_at) + '.'
+      : 'Nothing has matched this thread yet.';
+    return '<div class="state"><span class="big">No matches yet — may need broader sources</span>' +
+      esc(last) + ' Try a broader title/description on a new thread, or wait for the next sync.</div>';
+  }
+
+  function sectionLabel() {
+    if (sel.thread) return 'LATEST IN THIS THREAD';
+    if (sel.subpage) return 'LATEST IN THIS SUB-PAGE';
+    return 'LATEST ACROSS THE BEAT';
+  }
+  function renderFeed() {
+    if (sectionLabelEl) sectionLabelEl.textContent = sectionLabel();
+    if (!stories.length) {
+      feedEl.innerHTML = (sel.thread && sel.thread.status === 'tracking')
+        ? threadEmptyHtml(sel.thread)
+        : '<div class="state">Nothing here yet — the next sync will fill this in.</div>';
+      countEl.textContent = '0 stories';
+      return;
+    }
+    var rows = sortedRows();
+    countEl.textContent = rows.length + ' stor' + (rows.length === 1 ? 'y' : 'ies');
+    feedEl.innerHTML = rows.map(tileHtml).join('');
+  }
+  feedEl.addEventListener('click', function (e) {
+    var btn = e.target.closest('.act');
+    if (!btn) return;
+    var act = btn.getAttribute('data-act');
+    if (act === 'thread') {
+      var tile = btn.closest('.tile');
+      var sid = tile && tile.getAttribute('data-story-id');
+      var story = stories.filter(function (s) { return s.id === sid; })[0];
+      if (story) openThreadSheet(story);
+      return;
+    }
+    toast('Saving — coming soon');
+  });
+  sortEl.addEventListener('change', renderFeed);
+
+  // ---- navigation flow ----
+  async function selectPage(p) {
+    sel = { page: p, subpage: null, thread: null };
+    renderNav();
+    setCrumb();
+    if (p._subpages) { renderSubnav(); }
+    else {
+      try {
+        var rows = unwrap(await sb.from('subpages')
+          .select('id,page_id,title,slug,query,status,description')
+          .eq('page_id', p.id).order('position'));
+        p._subpages = Array.isArray(rows) ? rows : [];
+      } catch (e) { p._subpages = []; }
+      if (sel.page === p) renderSubnav();
+    }
+    loadStories();
+  }
+  async function selectSubpage(sp) {
+    sel.subpage = sp; sel.thread = null;
+    renderNav();
+    setCrumb();
+    if (sp._threads) { renderSubnav(); }
+    else {
+      try {
+        var rows = unwrap(await sb.from('threads')
+          .select('id,subpage_id,title,description,derived_query,status,match_count,last_match_at')
+          .eq('subpage_id', sp.id).order('position'));
+        sp._threads = Array.isArray(rows) ? rows : [];
+      } catch (e) { sp._threads = []; }
+      if (sel.subpage === sp) renderSubnav();
+    }
+    loadStories();
+  }
+  function selectThread(t) {
+    sel.thread = t;
+    setCrumb();
+    renderSubnav();
+    loadStories();
+  }
+
+  // =========================================================================
+  // ORGANIZE MODE
+  //
+  // A "mode" layered over the same data the reading view uses. It reorders and
+  // renames pages / sub-pages / threads in place on the shared caches (pages,
+  // page._subpages, subpage._threads), so exiting reflects every change with no
+  // reload. The currently-focused page (sel.page) and sub-page (sel.subpage)
+  // decide which sub-page / thread sections are shown — the same selection the
+  // reading view was on when ORGANIZE was pressed.
+  // =========================================================================
+
+  // ids of items re-pended during THIS organize session, so we can show the
+  // "will rebuild at next refresh" badge on exactly the ones the user edited.
+  var orgEdited = {};
+  // drag bookkeeping (within-level only — see orgMove)
+  var dragKind = null, dragId = null;
+
+  // ---- cache helpers: Organize reads/writes the same arrays the nav uses ----
+  function orgList(kind) {
+    if (kind === 'page') return pages;
+    if (kind === 'subpage') return (sel.page && sel.page._subpages) || [];
+    return (sel.subpage && sel.subpage._threads) || [];
+  }
+  function orgFindRow(kind, id) {
+    return orgList(kind).filter(function (r) { return r.id === id; })[0] || null;
+  }
+  function orgTable(kind) {
+    return kind === 'page' ? 'pages' : (kind === 'subpage' ? 'subpages' : 'threads');
+  }
+
+  // lazily fetch + cache a page's sub-pages / a sub-page's threads (mirrors the
+  // selects used by selectPage / selectSubpage so the row shapes match)
+  async function ensureSubpagesLoaded(p) {
+    if (p._subpages) return;
+    try {
+      var rows = unwrap(await sb.from('subpages')
+        .select('id,page_id,title,slug,query,status,description')
+        .eq('page_id', p.id).order('position'));
+      p._subpages = Array.isArray(rows) ? rows : [];
+    } catch (e) { p._subpages = []; }
+  }
+  async function ensureThreadsLoaded(sp) {
+    if (sp._threads) return;
+    try {
+      var rows = unwrap(await sb.from('threads')
+        .select('id,subpage_id,title,description,derived_query,status,match_count,last_match_at')
+        .eq('subpage_id', sp.id).order('position'));
+      sp._threads = Array.isArray(rows) ? rows : [];
+    } catch (e) { sp._threads = []; }
+  }
+
+  // ---- rendering ----
+  function orgChip(kind, row) {
+    if (kind === 'page') {
+      var region = REGION[row.slug];
+      return '<span class="org-chip">region · ' + esc(region || row.slug || '—') + '</span>';
+    }
+    var q = kind === 'subpage' ? row.query : row.derived_query;
+    if (hasText(q)) return '<span class="org-chip">query · ' + esc(q) + '</span>';
+    return '<span class="org-chip pending">building next sync</span>';
+  }
+  function orgRebuildBadge(kind, row) {
+    return (kind !== 'page' && orgEdited[row.id])
+      ? '<span class="org-rebuild">↻ will rebuild at next refresh</span>' : '';
+  }
+  function orgCardHtml(kind, row, focusedId) {
+    var isFocused = (kind !== 'thread') && (row.id === focusedId);
+    var openBtn = '';
+    if (kind === 'page') openBtn = '<button class="org-open" data-open="page">View sub-pages →</button>';
+    else if (kind === 'subpage') openBtn = '<button class="org-open" data-open="subpage">View threads →</button>';
+    var descPlaceholder = kind === 'page'
+      ? 'One line — a subtitle for this page'
+      : 'One line — becomes the search query on next sync';
+    return '<div class="org-card' + (isFocused ? ' focused' : '') + '" data-kind="' + kind + '" data-id="' + esc(row.id) + '">' +
+        '<div class="org-grip" title="Drag to reorder">⠿</div>' +
+        '<div class="org-fields">' +
+          '<input class="org-title" data-field="title" value="' + esc(row.title || '') + '" placeholder="Title" autocomplete="off">' +
+          '<input class="org-desc" data-field="description" value="' + esc(row.description || '') + '" placeholder="' + esc(descPlaceholder) + '" autocomplete="off">' +
+          '<div class="org-meta">' + orgChip(kind, row) + orgRebuildBadge(kind, row) + '</div>' +
+        '</div>' +
+        (openBtn ? '<div class="org-card-actions">' + openBtn + '</div>' : '') +
+      '</div>';
+  }
+  function orgSectionHtml(label, labelId, level, rows, focusedId, addLabel, addKind) {
+    var cards = rows.length
+      ? rows.map(function (r) { return orgCardHtml(level, r, focusedId); }).join('')
+      : '<div class="org-empty">Nothing here yet.</div>';
+    return '<div class="org-section">' +
+      '<div class="section-label"' + (labelId ? ' id="' + labelId + '"' : '') + '>' + esc(label) + '</div>' +
+      '<div class="hairline"></div>' +
+      '<div class="org-cards" data-level="' + level + '">' + cards + '</div>' +
+      '<button class="org-add" data-add="' + addKind + '">' + esc(addLabel) + '</button>' +
+    '</div>';
+  }
+  function renderOrganize() {
+    if (!sel.page) { organizeRoot.innerHTML = ''; return; }
+    var html = '';
+    html += '<div class="org-top"><button class="btn ghost org-back">← Back to reading</button></div>';
+    html += '<div class="org-head">' +
+      '<div class="eyebrow">ORGANIZE</div>' +
+      '<h1 class="page-h1">Pages, sub-pages &amp; threads</h1>' +
+      '<p class="page-intro">Drag the handle to reorder within a level. Edit a title or one-line description, then click away to save — for sub-pages and threads that sends it back to <b>pending</b> and the next sync rewrites its search query from what you typed. Pages are region-based, so editing a page is just cosmetic.</p>' +
+    '</div>';
+
+    // TOP PAGES
+    html += orgSectionHtml(
+      'TOP PAGES · DRAG TO REORDER', null, 'page',
+      pages, sel.page.id, '+ Add a top page', 'page');
+
+    // SUB-PAGES under the focused page
+    html += orgSectionHtml(
+      'SUB-PAGES UNDER ‘' + sel.page.title + '’', 'orgSubLabel', 'subpage',
+      (sel.page._subpages || []), (sel.subpage ? sel.subpage.id : null),
+      '+ Add a sub-page', 'subpage');
+
+    // THREADS under the focused sub-page (only when one is focused)
+    if (sel.subpage) {
+      html += orgSectionHtml(
+        'THREADS IN ‘' + sel.subpage.title + '’', 'orgThreadLabel', 'thread',
+        (sel.subpage._threads || []), null, '+ Add a thread', 'thread');
+    }
+
+    organizeRoot.innerHTML = html;
+  }
+
+  // keep the two section headers in sync after an inline title edit (cheaper
+  // than a full re-render, and it won't disturb input focus)
+  function updateOrgHeaders() {
+    var subL = document.getElementById('orgSubLabel');
+    if (subL && sel.page) subL.textContent = 'SUB-PAGES UNDER ‘' + sel.page.title + '’';
+    var thL = document.getElementById('orgThreadLabel');
+    if (thL && sel.subpage) thL.textContent = 'THREADS IN ‘' + sel.subpage.title + '’';
+  }
+  function updateCardMeta(kind, row, card) {
+    var meta = card.querySelector('.org-meta');
+    if (meta) meta.innerHTML = orgChip(kind, row) + orgRebuildBadge(kind, row);
+  }
+  function focusOrgInput(id, field) {
+    var el = organizeRoot.querySelector('.org-card[data-id="' + id + '"] .org-' + field);
+    if (el) { el.focus(); el.select(); }
+  }
+
+  // ---- inline edit (save on blur / Enter) ----
+  function onOrgFieldBlur(input) {
+    var card = input.closest('.org-card'); if (!card) return;
+    var kind = card.getAttribute('data-kind');
+    var id = card.getAttribute('data-id');
+    var field = input.getAttribute('data-field');
+    var row = orgFindRow(kind, id); if (!row) return;
+    var val = input.value.trim();
+    if (field === 'title' && !val) {
+      input.value = row.title || '';
+      toast('Give it a title first');
+      return;
+    }
+    if (val === (row[field] || '')) return;   // nothing changed
+    saveOrgField(kind, row, field, val, card);
+  }
+
+  async function saveOrgField(kind, row, field, val, card) {
+    // CRITICAL: editing a sub-page or thread's title/description re-pends it
+    // (status -> 'pending', query/derived_query -> null) so the NEXT SYNC
+    // rebuilds the query from the new text. Pages are cosmetic — never re-pend.
+    // We never send `slug`, so the row's underlying identity stays fixed.
+    var repend = (kind !== 'page');
+    var update = {};
+    update[field] = val;
+    if (repend) {
+      update.status = 'pending';
+      if (kind === 'subpage') update.query = null; else update.derived_query = null;
+    }
+    try {
+      unwrap(await sb.from(orgTable(kind)).update(update).eq('id', row.id));
+      row[field] = val;
+      if (repend) {
+        row.status = 'pending';
+        if (kind === 'subpage') row.query = null; else row.derived_query = null;
+        orgEdited[row.id] = true;
+      }
+      updateCardMeta(kind, row, card);
+      if (field === 'title') updateOrgHeaders();
+      if (repend) loadPendingQueue();   // refresh the "Building at next refresh" list
+      toast(repend ? 'Saved — rebuilds next sync' : 'Saved');
+    } catch (err) {
+      toast('Could not save — try again');
+    }
+  }
+
+  // ---- reorder (within-level only; updates the `position` column) ----
+  function clearDropMarks() {
+    Array.prototype.forEach.call(organizeRoot.querySelectorAll('.org-card'), function (c) {
+      c.classList.remove('drop-before', 'drop-after');
+    });
+  }
+  function persistPositions(kind) {
+    var list = orgList(kind);
+    var table = orgTable(kind);
+    var ops = list.map(function (row, i) {
+      row.position = i;
+      return sb.from(table).update({ position: i }).eq('id', row.id);
+    });
+    Promise.all(ops).catch(function () { toast('Could not save the new order'); });
+  }
+  function indexOfId(list, id) {
+    for (var i = 0; i < list.length; i++) { if (list[i].id === id) return i; }
+    return -1;
+  }
+  function orgMove(kind, fromId, toId, after) {
+    if (fromId === toId) return;
+    var list = orgList(kind);
+    var fromIdx = indexOfId(list, fromId);
+    if (fromIdx < 0) return;
+    var item = list.splice(fromIdx, 1)[0];
+    var toIdx = indexOfId(list, toId);      // recompute after the removal
+    if (toIdx < 0) { list.splice(fromIdx, 0, item); return; }
+    list.splice(after ? toIdx + 1 : toIdx, 0, item);
+    persistPositions(kind);
+    renderOrganize();
+  }
+
+  // ---- focus a different page / sub-page ----
+  async function orgOpen(kind, id) {
+    if (kind === 'page') {
+      var p = orgFindRow('page', id); if (!p) return;
+      sel.page = p; sel.subpage = null; sel.thread = null;
+      await ensureSubpagesLoaded(p);
+    } else if (kind === 'subpage') {
+      var sp = orgFindRow('subpage', id); if (!sp) return;
+      sel.subpage = sp; sel.thread = null;
+      await ensureThreadsLoaded(sp);
+    }
+    renderOrganize();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ---- add (same shape as the existing create flow) ----
+  function uniquePageSlug(base) {
+    var slug = slugify(base);
+    var taken = {};
+    pages.forEach(function (p) { taken[p.slug] = true; });
+    if (!taken[slug]) return slug;
+    var i = 2;
+    while (taken[slug + '-' + i]) i++;
+    return slug + '-' + i;
+  }
+  async function addPage() {
+    var body = { title: 'New page', slug: uniquePageSlug('new-page'), position: pages.length };
+    try {
+      var rows = unwrap(await sb.from('pages').insert(body).select());
+      var created = (Array.isArray(rows) && rows.length) ? rows[0] : body;
+      created._subpages = [];   // brand-new page has no sub-pages
+      pages.push(created);
+      renderOrganize();
+      focusOrgInput(created.id, 'title');
+      toast('Page added');
+    } catch (e) { toast('Could not add the page'); }
+  }
+  async function addSubpage() {
+    if (!sel.page) return;
+    var list = sel.page._subpages || (sel.page._subpages = []);
+    var body = {
+      page_id: sel.page.id, title: 'New sub-page', slug: slugify('New sub-page'),
+      description: '', status: 'pending', query: null, position: list.length
+    };
+    try {
+      var rows = unwrap(await sb.from('subpages').insert(body).select());
+      var created = (Array.isArray(rows) && rows.length) ? rows[0] : body;
+      list.push(created);
+      renderOrganize();
+      focusOrgInput(created.id, 'title');
+      loadPendingQueue();
+      toast('Sub-page added — query builds next sync');
+    } catch (e) { toast('Could not add the sub-page'); }
+  }
+  async function addThread() {
+    if (!sel.subpage) return;
+    // same per-user thread cap as the reading-view create flows
+    try {
+      var res = await sb.from('threads').select('id', { count: 'exact', head: true });
+      if (res.error) throw res.error;
+      if ((res.count || 0) >= THREAD_CAP) {
+        toast("You've hit your thread limit (" + THREAD_CAP + ") — archive one to add another");
+        return;
+      }
+    } catch (e) {
+      toast('Could not check your thread count — try again');
+      return;
+    }
+    var list = sel.subpage._threads || (sel.subpage._threads = []);
+    var body = {
+      subpage_id: sel.subpage.id, title: 'New thread', description: '',
+      status: 'pending', derived_query: null, position: list.length
+    };
+    try {
+      var rows = unwrap(await sb.from('threads').insert(body).select());
+      var created = (Array.isArray(rows) && rows.length) ? rows[0] : body;
+      list.push(created);
+      renderOrganize();
+      focusOrgInput(created.id, 'title');
+      loadPendingQueue();
+      toast('Thread added — query builds next sync');
+    } catch (e) { toast('Could not add the thread'); }
+  }
+
+  // ---- enter / exit ----
+  async function enterOrganize() {
+    if (document.body.classList.contains('organizing')) return;
+    if (!sel.page) { toast('Still loading your pages…'); return; }
+    closeForm();
+    await ensureSubpagesLoaded(sel.page);
+    if (sel.subpage) await ensureThreadsLoaded(sel.subpage);
+    document.body.classList.add('organizing');
+    crumbEl.innerHTML = '<span class="seg">~</span><span class="sep">/</span><span class="seg">organize</span>';
+    renderOrganize();
+    window.scrollTo(0, 0);
+  }
+  function exitOrganize() {
+    document.body.classList.remove('organizing');
+    organizeRoot.innerHTML = '';
+    // rebuild the reading view from the (now-edited) caches
+    setCrumb();
+    renderNav();
+    renderSubnav();
+    loadStories();   // a re-pended sub-page/thread now shows its pending state
+  }
+
+  organizeBtn.addEventListener('click', enterOrganize);
+
+  // ---- delegated wiring (organizeRoot is stable; its innerHTML is rebuilt) ----
+  organizeRoot.addEventListener('click', function (e) {
+    if (e.target.closest('.org-back')) { exitOrganize(); return; }
+    var add = e.target.closest('.org-add');
+    if (add) {
+      var w = add.getAttribute('data-add');
+      if (w === 'page') addPage();
+      else if (w === 'subpage') addSubpage();
+      else addThread();
+      return;
+    }
+    var open = e.target.closest('.org-open');
+    if (open) {
+      var card = open.closest('.org-card');
+      orgOpen(open.getAttribute('data-open'), card.getAttribute('data-id'));
+    }
+  });
+  organizeRoot.addEventListener('focusout', function (e) {
+    var input = e.target.closest('.org-title, .org-desc');
+    if (input) onOrgFieldBlur(input);
+  });
+  organizeRoot.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter') return;
+    var input = e.target.closest('.org-title, .org-desc');
+    if (input) { e.preventDefault(); input.blur(); }   // blur triggers the save
+  });
+  // drag only starts from the grip, so the text inputs stay freely selectable
+  organizeRoot.addEventListener('mousedown', function (e) {
+    var grip = e.target.closest('.org-grip');
+    if (grip) { var c = grip.closest('.org-card'); if (c) c.setAttribute('draggable', 'true'); }
+  });
+  // if a grip press didn't turn into a drag, drop the draggable flag again so
+  // the card's text inputs stay freely selectable
+  document.addEventListener('mouseup', function () {
+    if (!document.body.classList.contains('organizing')) return;
+    Array.prototype.forEach.call(organizeRoot.querySelectorAll('.org-card[draggable="true"]'), function (c) {
+      c.setAttribute('draggable', 'false');
+    });
+  });
+  organizeRoot.addEventListener('dragstart', function (e) {
+    var card = e.target.closest('.org-card'); if (!card) return;
+    dragKind = card.getAttribute('data-kind');
+    dragId = card.getAttribute('data-id');
+    card.classList.add('dragging');
+    if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', dragId); } catch (_) {} }
+  });
+  organizeRoot.addEventListener('dragover', function (e) {
+    var card = e.target.closest('.org-card'); if (!card || !dragKind) return;
+    if (card.getAttribute('data-kind') !== dragKind) return;   // within-level only
+    e.preventDefault();
+    var r = card.getBoundingClientRect();
+    var after = (e.clientY - r.top) > r.height / 2;
+    clearDropMarks();
+    card.classList.add(after ? 'drop-after' : 'drop-before');
+  });
+  organizeRoot.addEventListener('drop', function (e) {
+    var card = e.target.closest('.org-card'); if (!card || !dragKind) return;
+    if (card.getAttribute('data-kind') !== dragKind) return;
+    e.preventDefault();
+    var r = card.getBoundingClientRect();
+    var after = (e.clientY - r.top) > r.height / 2;
+    var toId = card.getAttribute('data-id');
+    clearDropMarks();
+    orgMove(dragKind, dragId, toId, after);
+  });
+  organizeRoot.addEventListener('dragend', function (e) {
+    var card = e.target.closest('.org-card');
+    if (card) { card.classList.remove('dragging'); card.setAttribute('draggable', 'false'); }
+    clearDropMarks();
+    dragKind = null; dragId = null;
+  });
+})();
+</script>
+</body>
+</html>
